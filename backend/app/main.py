@@ -157,4 +157,4 @@ def get_date():
         dict: Current date in ISO format.
     """
     current_date = datetime.now().isoformat()
-    return JSONResponse(content={"date" : current_date})
+    return JSONResponse(content={"date": current_date})

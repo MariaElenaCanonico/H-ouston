@@ -17,8 +17,8 @@ def print_province_names():
     # Creating a string with all the names
     names_str = ', '.join(province_names)
     return names_str
-    result = print_province_names()
-    print(result)
+    # result = print_province_names()
+    # print(result)
 
 
 def district(district_name, df):
