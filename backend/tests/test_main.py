@@ -9,20 +9,22 @@ from datetime import datetime
 # Add the project root to the sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Now you can do the relative import
-from app.main import app, district, city
+from app.main import app, district, city, district_cinema, capacity_statistics
 from app.mymodules.function import print_province_names
 
 client = TestClient(app)
-df = pd.read_csv('/app/app/data.csv', sep = ';')
+df = pd.read_csv('/app/app/data.csv', sep=';')
 # Converting all the numbers inside the dataframe as strings for JSON
 df = df.astype(str)
 
-df2 = pd.read_csv('/app/app/cinema.csv', sep = ';')
+df2 = pd.read_csv('/app/app/cinema.csv', sep=';')
+
 
 def test_read_main():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"Hello": "Veneto"}
+
 
 def test_select_districts():
 
@@ -37,6 +39,7 @@ def test_select_districts():
 
     # Assert the response JSON matches the expected result
     assert response.json() == expected_result
+
 
 def test_get_district():
     # Select a mock district for the request
@@ -54,6 +57,25 @@ def test_get_district():
 
     # Assert the response JSON matches the expected result
     assert response.json() == expected_result
+
+
+def test_get_wrongdistrict():
+    # Select a mock district for the request
+    district_name = 'Pippo'
+
+    # Make a request to the /district/{district_name} endpoint
+    response = client.get(f'/district/{district_name}')
+
+    # Assert the status code is 200 (OK)
+    assert response.status_code == 200
+
+    # Extract the expected result based on the mock data and district_name
+    dist_info = district(district_name, df)
+    expected_result = {"district_name": 'Pippo', "district_info": {'Error': 'District not found'}}
+
+    # Assert the response JSON matches the expected result
+    assert response.json() == expected_result
+
 
 class TestPrintProvinceNames(unittest.TestCase):
 
@@ -83,6 +105,7 @@ class TestPrintProvinceNames(unittest.TestCase):
         expected_result = "District1, District2, District3"
         self.assertEqual(result, expected_result)
 
+
 def test_district(tmpdir):
     # Create a temporary CSV file with sample data
     sample_data = {'Provincia': ['District1', 'District2', 'District3']}
@@ -104,6 +127,7 @@ def test_district(tmpdir):
     # Assert the result
     expected_result = {"district_name": mock_district_name, "district_info": sample_df[sample_df['Provincia'] == mock_district_name].to_dict(orient='records')}
     assert result == expected_result
+
 
 def test_city(tmpdir):
     # Create a temporary CSV file with sample data
@@ -127,6 +151,7 @@ def test_city(tmpdir):
     expected_result = {"city_name": mock_city_name, "city_info": sample_df[sample_df['Città'] == mock_city_name].to_dict(orient='records')}
     assert result == expected_result
 
+
 def test_get_city():
     # Select a mock city for the request
     city_name = 'Villafranca di Verona'
@@ -143,6 +168,7 @@ def test_get_city():
 
     # Assert the response JSON matches the expected result
     assert response.json() == expected_result
+
 
 def test_download():
     # Select some mock data for the request
@@ -165,6 +191,7 @@ def test_download():
     # Cleanup: Delete the temporary file created during the test
     os.remove(f"{selected_option}.txt")
 
+
 def test_select_cities():
     # Select a mock district for the request
     district = 'Verona'
@@ -181,6 +208,7 @@ def test_select_cities():
 
     # Assert the response JSON matches the expected result
     assert response.json() == expected_result
+
 
 def test_select_theater():
     # Select a mock city for the request
@@ -199,6 +227,75 @@ def test_select_theater():
 
     # Assert the response JSON matches the expected result
     assert response.json() == expected_result
+
+
+def test_select_wrongtheater():
+    # Select a mock city for the request
+    mock_city = 'Pippo'
+
+    # Make a request to the /select_theater endpoint
+    response = client.post('/select_theater', data={'city': mock_city})
+
+    # Assert the status code is 200 (OK)
+    assert response.status_code == 200
+
+    # Extract the expected result based on the mock data and city
+    filtered_df = df[df['Città'] == mock_city]
+    theaters = list(filtered_df['Nome'].unique())
+    expected_result = [[theater, theater] for theater in theaters]
+
+    # Assert the response JSON matches the expected result
+    assert response.json() == expected_result
+
+
+def test_get_district_cinema():
+    # Select a mock district for the request
+    dis_name_cinema = 'Verona'
+
+    # Make a request to the /district/{district_name} endpoint
+    response = client.get(f'/district_cinema/{dis_name_cinema}')
+
+    # Assert the status code is 200 (OK)
+    assert response.status_code == 200
+
+    # Extract the expected result based on the mock data and district_name
+    dis_info_cinema = district_cinema(dis_name_cinema, df2)
+    expected_result = {"dis_name_cinema": dis_name_cinema, "dis_info_cinema": dis_info_cinema}
+
+    # Assert the response JSON matches the expected result
+    assert response.json() == expected_result
+
+
+def test_get_wrongdistrict_cinema():
+    # Select a mock district for the request
+    dis_name_cinema = 'Pippo'
+
+    # Make a request to the /district/{district_name} endpoint
+    response = client.get(f'/district_cinema/{dis_name_cinema}')
+
+    # Assert the status code is 200 (OK)
+    assert response.status_code == 200
+
+    # Extract the expected result based on the mock data and district_name
+    dis_info_cinema = district_cinema(dis_name_cinema, df2)
+    expected_result = {"dis_name_cinema": 'Pippo', "dis_info_cinema": {'Error': 'District not found'}}
+
+    # Assert the response JSON matches the expected result
+    assert response.json() == expected_result
+
+
+# Test the capacity_statistics function
+def test_capacity_statistics():
+    # Assuming 'Verona' is the district_name to be tested
+     district_name = 'Verona'
+
+    # Call the function with the df2
+     response = client.get(f'/capacity_statistics/{district_name}')
+     expected_results = response.json()
+     assert float(expected_results['maximum']) >= float(expected_results['minimum'])
+     assert float(expected_results['mean']) <= float(expected_results['maximum'])
+     assert float(expected_results['mean']) >= float(expected_results['minimum'])
+
 
 def test_get_date():
     # Make a request to the /get-date endpoint
